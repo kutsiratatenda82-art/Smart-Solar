@@ -14,10 +14,11 @@ constexpr const char* WIFI_SSID = "TelePower-Guard";
 constexpr const char* DASHBOARD_PIN = "1234";
 
 // BACKEND & NETWORK DEFAULTS (Can also be changed anytime via http://192.168.4.1)
-String backendUrl = "https://smart-solar-backend.onrender.com"; // Set to your Render URL
-String deviceIdentifier = "kutsira"; // Matches device in dashboard
-String routerSsid = "Teeeee"; 
-String routerPass = "Smith077";
+String backendUrl = "https://smart-solar-backend.onrender.com"; // Put your exact Render Backend URL here
+String deviceIdentifier = "ESP32"; // Matches device identifier in dashboard
+String routerSsid = "Teeeee";       // Wi-Fi or Mobile Hotspot SSID
+String routerPass = "Smith077";     // Wi-Fi or Mobile Hotspot Password
+constexpr bool OVERWRITE_SAVED_CONFIG = true; // Forces the ESP32 to use the code settings instead of old stale flash memory!
 
 // --- INDOOR TORCH TEST MODE ---
 // Set to true to make it ultra-sensitive to a phone torch by boosting tiny voltages.
@@ -139,6 +140,9 @@ void postToBackend() {
 
     String payload = "{\"voltage\": " + String(displayVoltage, 2) + ", \"current\": " + String(displayCurrent, 2) + "}";
     
+    Serial.print("Attempting POST to: ");
+    Serial.println(fullUrl);
+    
     if (fullUrl.startsWith("https://")) {
       WiFiClientSecure client;
       client.setInsecure(); // Connect securely without strict certificate pinning
@@ -147,8 +151,12 @@ void postToBackend() {
       int httpResponseCode = http.POST(payload);
       if (httpResponseCode > 0) {
         addLog("Cloud POST OK: " + String(httpResponseCode));
+        if (httpResponseCode != 201) {
+          String resp = http.getString();
+          addLog("Server Response: " + resp);
+        }
       } else {
-        addLog("Cloud POST Error: " + http.errorToString(httpResponseCode));
+        addLog("Cloud POST Error (" + String(httpResponseCode) + "): " + http.errorToString(httpResponseCode));
       }
       http.end();
     } else {
@@ -158,12 +166,13 @@ void postToBackend() {
       if (httpResponseCode > 0) {
         addLog("Local POST OK: " + String(httpResponseCode));
       } else {
-        addLog("Local POST Error: " + http.errorToString(httpResponseCode));
+        addLog("Local POST Error (" + String(httpResponseCode) + "): " + http.errorToString(httpResponseCode));
       }
       http.end();
     }
   } else {
-    addLog("Cloud POST Failed: No Wi-Fi");
+    addLog("Cloud POST Failed: No Wi-Fi (Status: " + String(WiFi.status()) + ")");
+  }
   }
 }
 
@@ -312,12 +321,26 @@ void setup() {
   Serial.println(APP_NAME);
   Serial.println(FIRMWARE_VERSION);
 
-  // Load saved network and backend config from NVS
+  // Load or update network and backend config
   preferences.begin("telepower", false);
-  backendUrl = preferences.getString("backendUrl", backendUrl);
-  deviceIdentifier = preferences.getString("deviceId", deviceIdentifier);
-  routerSsid = preferences.getString("routerSsid", routerSsid);
-  routerPass = preferences.getString("routerPass", routerPass);
+  if (OVERWRITE_SAVED_CONFIG) {
+    preferences.putString("backendUrl", backendUrl);
+    preferences.putString("deviceId", deviceIdentifier);
+    preferences.putString("routerSsid", routerSsid);
+    preferences.putString("routerPass", routerPass);
+    Serial.println("[NVS] Flash configuration updated with current code settings.");
+  } else {
+    backendUrl = preferences.getString("backendUrl", backendUrl);
+    deviceIdentifier = preferences.getString("deviceId", deviceIdentifier);
+    routerSsid = preferences.getString("routerSsid", routerSsid);
+    routerPass = preferences.getString("routerPass", routerPass);
+  }
+
+  Serial.println("========================================");
+  Serial.print("Device Identifier : "); Serial.println(deviceIdentifier);
+  Serial.print("Backend URL       : "); Serial.println(backendUrl);
+  Serial.print("Connecting to Wi-Fi: "); Serial.println(routerSsid);
+  Serial.println("========================================");
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, LOW);
@@ -335,6 +358,22 @@ void setup() {
   
   // Connect to the home/office router or phone hotspot for cloud access
   WiFi.begin(routerSsid.c_str(), routerPass.c_str());
+
+  Serial.print("Waiting for Wi-Fi connection");
+  int wifiAttempts = 0;
+  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 20) {
+    delay(500);
+    Serial.print(".");
+    wifiAttempts++;
+  }
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("[Wi-Fi CONNECTED] IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("[Wi-Fi FAILED] Could not connect to '" + routerSsid + "'. Check SSID and password!");
+  }
   
   delay(150);
   ipText = WiFi.softAPIP().toString();
@@ -344,7 +383,7 @@ void setup() {
 
   Serial.print("Dashboard AP: ");
   Serial.println(WIFI_SSID);
-  Serial.print("Dashboard: http://");
+  Serial.print("Config URL: http://");
   Serial.println(ipText);
 }
 
