@@ -14,7 +14,8 @@ constexpr const char* WIFI_SSID = "TelePower-Guard";
 constexpr const char* DASHBOARD_PIN = "1234";
 
 // BACKEND & NETWORK DEFAULTS (Can also be changed anytime via http://192.168.4.1)
-String backendUrl = "https://smart-solar-backend.onrender.com"; // Set to your Render URL or local IP
+String backendUrl = "https://smart-solar-backend.onrender.com"; // Set to your Render URL
+String deviceIdentifier = "kutsira"; // Matches device in dashboard
 String routerSsid = "Teeeee"; 
 String routerPass = "Smith077";
 
@@ -130,9 +131,9 @@ void postToBackend() {
     // Append telemetry endpoint if not present
     if (fullUrl.indexOf("/api/devices/telemetry") == -1) {
       if (fullUrl.endsWith("/")) {
-        fullUrl += "api/devices/telemetry/kutsira";
+        fullUrl += "api/devices/telemetry/" + deviceIdentifier;
       } else {
-        fullUrl += "/api/devices/telemetry/kutsira";
+        fullUrl += "/api/devices/telemetry/" + deviceIdentifier;
       }
     }
 
@@ -258,8 +259,10 @@ void setupRoutes() {
     html += "<input type='text' name='ssid' value='" + routerSsid + "' placeholder='e.g. Mobile Hotspot'>";
     html += "<label>Wi-Fi Password:</label>";
     html += "<input type='password' name='pass' value='" + routerPass + "' placeholder='Password'>";
-    html += "<label>Backend / Render Cloud URL:</label>";
+    html += "<label>Render Cloud Backend URL:</label>";
     html += "<input type='text' name='url' value='" + backendUrl + "' placeholder='https://smart-solar-backend.onrender.com'>";
+    html += "<label>Device Identifier:</label>";
+    html += "<input type='text' name='device' value='" + deviceIdentifier + "' placeholder='kutsira'>";
     html += "<input type='submit' value='Save & Connect'>";
     html += "</form>";
     html += "<div class='status'>Wi-Fi: " + String(WiFi.status() == WL_CONNECTED ? "Connected to " + WiFi.SSID() : "Connecting / Offline") + "<br>IP: " + WiFi.localIP().toString() + "</div>";
@@ -279,6 +282,10 @@ void setupRoutes() {
     if (server.hasArg("pass")) {
       routerPass = server.arg("pass");
       preferences.putString("routerPass", routerPass);
+    }
+    if (server.hasArg("device")) {
+      deviceIdentifier = server.arg("device");
+      preferences.putString("deviceId", deviceIdentifier);
     }
     server.send(200, "text/html", "<html><body style='font-family:sans-serif;background:#0f172a;color:#fff;padding:40px;text-align:center;'><h2>Settings Saved!</h2><p>ESP32 is rebooting and connecting to the network...</p></body></html>");
     delay(1500);
@@ -308,6 +315,7 @@ void setup() {
   // Load saved network and backend config from NVS
   preferences.begin("telepower", false);
   backendUrl = preferences.getString("backendUrl", backendUrl);
+  deviceIdentifier = preferences.getString("deviceId", deviceIdentifier);
   routerSsid = preferences.getString("routerSsid", routerSsid);
   routerPass = preferences.getString("routerPass", routerPass);
 
