@@ -14,7 +14,7 @@ constexpr const char* WIFI_SSID = "TelePower-Guard";
 constexpr const char* DASHBOARD_PIN = "1234";
 
 // BACKEND & NETWORK DEFAULTS (Can also be changed anytime via http://192.168.4.1)
-String backendUrl = "https://smart-solar-backend.onrender.com"; // Put your exact Render Backend URL here
+String backendUrl = "https://smart-solar-vtfa.onrender.com"; // Put your exact Render Backend URL here
 String deviceIdentifier = "ESP32"; // Matches device identifier in dashboard
 String routerSsid = "Teeeee";       // Wi-Fi or Mobile Hotspot SSID
 String routerPass = "Smith077";     // Wi-Fi or Mobile Hotspot Password
