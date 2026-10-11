@@ -5,6 +5,7 @@ alembic
 pydantic
 pydantic-settings
 psycopg2-binary
+psycopg[binary]
 python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
