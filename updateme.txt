@@ -1,0 +1,31 @@
+# Smart Solar System - Project Update
+
+## Project Overview
+The project is a "Smart Solar System" application consisting of a Python FastAPI backend and a React/TypeScript/Vite frontend. 
+
+## Backend Status (FastAPI)
+- Uses FastAPI, SQLAlchemy, Alembic (for migrations), and pytest.
+- **API Endpoints implemented**:
+  - `/api/auth` (Registration, Login, JWT Authentication)
+  - `/api/devices` (Device management, simulation)
+  - `/api/devices/{id}/readings` (Telemetry ingestion)
+  - `/api/alerts` (Alert fetching, history, acknowledging)
+  - `/api/devices/{id}/diagnostics` (Device diagnostic state)
+  - `/health` (Healthcheck)
+- **Phase 2 Features (Diagnostics & Alerts)**:
+  - A diagnostic engine is implemented to evaluate readings (e.g., detecting CRITICAL_LOW_VOLTAGE).
+  - Submitting readings automatically generates alerts.
+  - Alert deduplication ensures only one active alert per condition per device.
+  - Alerts are auto-resolved when normal readings resume.
+  - A simulation mode exists (`/simulate`) to test diagnostics without writing to the database.
+  - Authorization is enforced (users can only access/acknowledge alerts for their own devices).
+
+## Frontend Status (React + Vite)
+- Initialized with React, TypeScript, and Vite.
+- Tailwind CSS is set up (`tailwind.config.js` and `postcss.config.js` present).
+- Basic project structure exists in `src/` and `public/`. 
+
+## Next Steps
+- Connect frontend to the backend APIs.
+- Build UI components for Device Dashboard, Alert Management, and Telemetry Visualization.
+- Expand diagnostic rules if needed.
