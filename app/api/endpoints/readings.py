@@ -47,13 +47,19 @@ def create_reading(
     
     return response_data
 
+from sqlalchemy import func
+
 @router.post("/telemetry/{device_identifier}", response_model=schemas.ReadingResponse, status_code=status.HTTP_201_CREATED)
 def ingest_hardware_reading(
     device_identifier: str,
     reading_in: schemas.ReadingCreate,
     db: Session = Depends(get_db),
 ):
-    device = db.query(models.SolarDevice).filter(models.SolarDevice.device_identifier == device_identifier).first()
+    device = (
+        db.query(models.SolarDevice)
+        .filter(func.lower(models.SolarDevice.device_identifier) == device_identifier.lower().strip())
+        .first()
+    )
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     
