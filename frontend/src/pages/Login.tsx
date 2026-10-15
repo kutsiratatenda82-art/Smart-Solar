@@ -2,15 +2,43 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../api/services';
 import { useAuth } from '../context/AuthContext';
-import { Sun, AlertCircle } from 'lucide-react';
+import { Sun, AlertCircle, KeyRound, X, ShieldCheck } from 'lucide-react';
+
+const SECURITY_QUESTIONS = [
+  { id: 'birthday', label: 'What is your date of birth?', type: 'date', placeholder: '' },
+  { id: 'school', label: 'What was the name of your first primary school?', type: 'text', placeholder: 'e.g. Mkoba Primary' },
+  { id: 'pet', label: "What was your first pet's name?", type: 'text', placeholder: 'Your answer' },
+  { id: 'city', label: 'In which city were you born?', type: 'text', placeholder: 'e.g. Kwekwe' },
+];
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [verifying, setVerifying] = useState(false);
+  const [recoverySent, setRecoverySent] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  const openForgot = () => {
+    setRecoveryEmail(email);
+    setAnswers({});
+    setRecoverySent(false);
+    setShowForgot(true);
+  };
+
+  const handleRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifying(true);
+    setTimeout(() => {
+      setVerifying(false);
+      setRecoverySent(true);
+    }, 1200);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +94,17 @@ const Login: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-100">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-100">Password</label>
+                <button
+                  type="button"
+                  id="forgot-password-button"
+                  onClick={openForgot}
+                  className="text-sm font-semibold text-yellow-400 hover:text-yellow-300 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="mt-1">
                 <input
                   type="password"
@@ -108,6 +146,98 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Forgot password modal ── */}
+      {showForgot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowForgot(false)}
+        >
+          <div
+            id="forgot-password-modal"
+            className="w-full max-w-md bg-slate-900/95 border border-white/15 rounded-2xl shadow-2xl p-6 text-white max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                  <KeyRound className="text-yellow-400" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">Account Recovery</h3>
+                  <p className="text-xs text-gray-300">Answer your security questions to verify your identity</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="forgot-password-close"
+                onClick={() => setShowForgot(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {recoverySent ? (
+              <div className="text-center py-6">
+                <ShieldCheck className="mx-auto text-emerald-400 mb-3" size={48} />
+                <h4 className="text-lg font-semibold mb-2">Request received</h4>
+                <p className="text-sm text-gray-300 mb-6">
+                  Self-service password reset is not enabled on this server yet. Please contact your
+                  system administrator to complete the reset for <span className="text-yellow-400">{recoveryEmail || 'your account'}</span>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(false)}
+                  className="w-full py-3 rounded-xl font-bold text-gray-900 bg-yellow-400 hover:bg-yellow-300 transition-all"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            ) : (
+              <form className="space-y-4" onSubmit={handleRecovery}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Email address</label>
+                  <input
+                    id="recovery-email"
+                    type="email"
+                    required
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="block w-full px-4 py-2.5 bg-white/10 border border-white/15 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 sm:text-sm"
+                  />
+                </div>
+                {SECURITY_QUESTIONS.map((q, i) => (
+                  <div key={q.id}>
+                    <label className="block text-sm font-medium text-gray-200 mb-1">
+                      {i + 1}. {q.label}
+                    </label>
+                    <input
+                      id={`security-${q.id}`}
+                      type={q.type}
+                      required
+                      value={answers[q.id] || ''}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      placeholder={q.placeholder}
+                      className="block w-full px-4 py-2.5 bg-white/10 border border-white/15 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 sm:text-sm [color-scheme:dark]"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="submit"
+                  id="recovery-submit"
+                  disabled={verifying}
+                  className="w-full py-3 rounded-xl font-bold text-gray-900 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 transition-all"
+                >
+                  {verifying ? 'Verifying...' : 'Verify & Reset Password'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Brain, X, Send, Loader2, BotMessageSquare } from 'lucide-react';
 import { useDevice } from '../context/DeviceContext';
+import { chatService } from '../api/services';
 
 interface Message {
   id: number;
@@ -280,10 +281,25 @@ const SolarChatbot: React.FC = () => {
     setInput('');
     setLoading(true);
 
-    // Simulate a short "thinking" delay for a natural feel
-    await new Promise((resolve) => setTimeout(resolve, 600 + Math.random() * 800));
+    // Short "thinking" pause so replies don't appear unnaturally instantly
+    const thinking = new Promise((resolve) => setTimeout(resolve, 700 + Math.random() * 700));
 
-    const reply = generateLocalResponse(trimmed, !!currentDevice);
+    let reply: string;
+    try {
+      // Primary path: backend assistant grounded in live telemetry + active alerts
+      const [res] = await Promise.all([
+        chatService.sendMessage(currentDevice ? currentDevice.id : null, trimmed),
+        thinking,
+      ]);
+      reply = res.reply;
+    } catch {
+      // Fallback: offline local guidance if the server is unreachable
+      await thinking;
+      reply = generateLocalResponse(trimmed, !!currentDevice)
+        .replace(/^(yo\s+)?bro ski[,!]?\s*/i, '')
+        .replace(/,?\s*bro ski/gi, '');
+      reply = reply.charAt(0).toUpperCase() + reply.slice(1);
+    }
 
     const botMessage: Message = {
       id: nextId.current++,

@@ -17,7 +17,7 @@ constexpr const char* DASHBOARD_PIN = "1234";
 String backendUrl = "https://smart-solar-vtfa.onrender.com"; // Put your exact Render Backend URL here
 String deviceIdentifier = "ESP32"; // Matches device identifier in dashboard
 String routerSsid = "Teeeee";       // Wi-Fi or Mobile Hotspot SSID
-String routerPass = "Smith077";     // Wi-Fi or Mobile Hotspot Password
+String routerPass = "Smith0771";     // Wi-Fi or Mobile Hotspot Password
 constexpr bool OVERWRITE_SAVED_CONFIG = true; // Forces the ESP32 to use the code settings instead of old stale flash memory!
 
 // --- INDOOR TORCH TEST MODE ---

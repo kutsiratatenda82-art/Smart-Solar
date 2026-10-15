@@ -16,6 +16,13 @@ from datetime import datetime, timezone
 from app import models
 from app.api import deps
 from app.core.database import get_db
+from app.services.assistant_conversation import conversational_reply
+import re
+
+
+def _word_match(msg: str, keywords) -> bool:
+    """Whole-word match so e.g. 'war' does not match 'warning' or 'hardware'."""
+    return any(re.search(r"\b" + re.escape(kw) + r"\b", msg) for kw in keywords)
 
 router = APIRouter()
 
@@ -95,7 +102,7 @@ def _get_smart_reply(
         "password", "hack", "exploit", "injection", "sudo", "admin access",
         "credit card", "bank account", "social security", "ssn",
     ]
-    if any(kw in msg for kw in rejection_keywords):
+    if _word_match(msg, rejection_keywords):
         return (
             "🚫 I'm SolarGuard AI — I'm designed exclusively to help you monitor and "
             "manage your solar energy system. I cannot assist with that request.\n\n"
@@ -112,7 +119,7 @@ def _get_smart_reply(
         "homework", "essay", "write me a", "code me a",
         "game", "minecraft", "fortnite", "play",
     ]
-    if any(kw in msg for kw in off_topic_keywords):
+    if _word_match(msg, off_topic_keywords):
         return (
             "😊 That's an interesting topic, but I'm SolarGuard AI — I specialise "
             "exclusively in solar energy monitoring and system diagnostics.\n\n"
@@ -124,10 +131,15 @@ def _get_smart_reply(
             "What would you like to know about your solar system?"
         )
 
+    # ── Conversational layer (natural, data-grounded answers) ──────────────
+    conversational = conversational_reply(message, device, latest_reading, active_alerts)
+    if conversational:
+        return conversational
+
     # ── Greetings ──────────────────────────────────────────────────────────
     greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening",
                  "howdy", "sup", "what's up", "greetings", "yo", "heya"]
-    if any(msg.startswith(g) or msg == g for g in greetings):
+    if any(re.match(r"^" + re.escape(g) + r"\b", msg) for g in greetings):
         return (
             f"Hello! 👋 I'm SolarGuard AI, your solar energy assistant.\n\n"
             f"I'm currently monitoring device '{device.name}' — Status: {online_status}\n\n"
@@ -453,4 +465,5 @@ def chat_with_assistant(
 
     # ── 4. Get smart reply ──────────────────────────────────────────────────
     reply = _get_smart_reply(body.message, device, latest_reading, active_alerts)
-    return ChatResponse(reply=reply)
+    # The chat bubble renders plain text, so strip markdown bold markers.
+    return ChatResponse(reply=reply.replace("**", ""))
